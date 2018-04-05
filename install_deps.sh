@@ -7,4 +7,5 @@
 
 pip install python-Levenshtein
 pip install fuzzywuzzy
-git clone https://github.com/ryszard/python-ngrams.git $(pwd)/src/
+pip install ngram
+pip install phonetics

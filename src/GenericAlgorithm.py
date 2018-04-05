@@ -6,7 +6,9 @@ class GenericAlgorithm:
         self.possibleSpellings = {}
         self.name = None
         self.dictionary = dictionary
-        self.stats = {'match': 0, 'incorrect': 0, 'no_match': 0, 'perfect_match': 0, 'num_attempted': 0}
+        self.stats = {'match': 0, 'incorrect': 0, 'perfect_match': 0, 'num_attempted': 0}
+        self.evaluation = {'precision': 0, 'recall': 0, 'accuracy': 0}
+        self.name = "Generic Algorithm"
 
     def findCorrections(self, typo):
         """
@@ -14,4 +16,17 @@ class GenericAlgorithm:
         corrections into self.possibleSpellings
         """
         self.possibleSpellings[typo] = {}
-        return
+
+        # all spellcheck algorithms should immediately return a match if the misspelled word is already
+        # in the dictionary. This can be used as a ground truth for number of words not misspelled according
+        # to the dictionary
+        try:
+
+            if self.dictionary[typo]:
+                # check for an exact match
+                self.possibleSpellings[typo][typo] = 1
+                return True
+
+        except KeyError:
+            return False
+

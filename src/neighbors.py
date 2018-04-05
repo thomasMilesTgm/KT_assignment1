@@ -6,33 +6,56 @@ numbers = "0123456789"
 
 chars = lowerCase
 
+
 def neighbors(pattern, d):
-    assert(d <= len(pattern))
+    r = []
+    if d <= 0:
+        return None
 
-    if d == 0:
-        return [pattern]
+    for i in range(0, len(pattern)+1):
+        # insertion
+        for letter in chars:
+            insertion = pattern[:i] + letter + pattern[i:]
+            r.append(insertion)
 
-    r2 = neighbors(pattern[1:], d-1)
-    r = [c + r3 for r3 in r2 for c in chars if c != pattern[0]]
+            recursion = neighbors(insertion, d - 1)
+            if recursion:
+                r += recursion
 
-    if (d < len(pattern)):
-        r2 = neighbors(pattern[1:], d)
-        r += [pattern[0] + r3 for r3 in r2]
+    for i in range(0, len(pattern)):
+        # deletion
+        deletion = pattern[:i] + pattern[i+1:]
+        r.append(deletion)
+
+        recursion = neighbors(deletion, d - 1)
+        if recursion:
+            r += recursion
+
+        # replacement
+        for letter in chars:
+            replacement = pattern[:i] + letter + pattern[i+1:]
+            if letter != pattern[i]:
+                r.append(replacement)
+
+                recursion = neighbors(replacement, d - 1)
+                if recursion:
+                    r += recursion
 
     return r
+
 
 class NeighborhoodSearch(GenericAlgorithm):
 
     def __init__(self, dictionary, distance):
         GenericAlgorithm.__init__(self, dictionary)
         self.distance = distance
+        self.name = "Neighborhood Distance"
+
 
     def findCorrections(self, typo):
-        self.possibleSpellings[typo] = {}
 
-        if typo in self.dictionary.keys():
-            # check for an exact match
-            self.possibleSpellings[typo][typo] = 1
+        if GenericAlgorithm.findCorrections(self, typo):
+            pass
 
         else:
             # otherwise do the neighborhood search
