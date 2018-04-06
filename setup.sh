@@ -9,3 +9,6 @@ pip install python-Levenshtein
 pip install fuzzywuzzy
 pip install ngram
 pip install phonetics
+
+mkdir log
+mkdir out
