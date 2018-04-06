@@ -1,17 +1,9 @@
-from GenericAlgorithm import *
-from neighbors import NeighborhoodSearch
-from ngram_distance import NgramAlgorithm
-from datetime import datetime
-from phonetic import *
-from combined import *
-
-CLEAR_CACHE = True
+from cache import *
 
 def analyse(params):
 
     dictFilepath = "../data_19mar/dictionary.txt"
     misspell = open("../data_19mar/misspell.txt",'r').readlines()
-    output = open("../out/statistics.txt", "w")
     correct = open('../data_19mar/correct.txt', 'r').readlines()
 
 
@@ -28,15 +20,7 @@ def analyse(params):
         correctSpelling[misspell[i].strip('\n')] = correct[i].strip('\n')
 
     # Classes that implement various approximate string matching algorithms
-    approxAlgs = {}
-
-    approxAlgs['neighbor'] = NeighborhoodSearch(dictionary, params['Neighborhood distance'])
-    approxAlgs['nGram'] = NgramAlgorithm(dictionary, N=params['NGram distance'], match_threshold=params['NGram threshold'])
-    approxAlgs['phonetic'] = Metaphone(dictionary)
-    approxAlgs['exact only'] = GenericAlgorithm(dictionary)
-    approxAlgs['metaphone-ngram'] = metaphone_ngram(dictionary, params['Metaphone nGrams'], match_threshold=params['Metaphone nG threshold'])
-    approxAlgs['metaphone-neighborhood'] = metaphone_ngram(dictionary, params['Metaphone neighbors'])
-
+    approxAlgs = init_cache(params, dictionary)
 
     for typo in misspell:
         typo = typo.strip('\n')
@@ -59,8 +43,6 @@ def analyse(params):
                     if len(approxAlgs[algorithm].possibleSpellings[typo]) == 1:
                         approxAlgs[algorithm].stats['perfect_match'] += 1
 
-
-
             except KeyError:
                 approxAlgs[algorithm].stats['incorrect'] += 1
 
@@ -79,39 +61,13 @@ def analyse(params):
                            / (approxAlgs[algorithm].stats['match'] + approxAlgs[algorithm].stats['incorrect'])
                 approxAlgs[algorithm].evaluation['accuracy'] = accuracy
 
-    cache = open('../out/cache.txt', 'a')
-    cache.write('\n' + str(datetime.now())+'\n')
+    write_cache(approxAlgs, params)
 
 
-    # cache and print results
-    for algorithm in approxAlgs:
-
-        string = approxAlgs[algorithm].name + '\n'
-
-        if approxAlgs[algorithm].name == 'Neighborhood Distance':
-            string += '{Neighborhood distance: ' + str(param['Neighborhood distance']) + '}\n'
-
-        elif approxAlgs[algorithm].name == 'NGram Distance':
-            string += '{nGram distance: ' + str(param['NGram distance']) + '}  {Threshold: ' + str(param['NGram threshold']) + '}\n'
-
-        elif approxAlgs[algorithm].name == 'Metaphone-nGram':
-            string += '{nGram distance: ' + str(param['Metaphone nGrams']) + '}  {Threshold: ' + str(param['Metaphone nG threshold']) + '}\n'
-
-        elif approxAlgs[algorithm].name == 'Metaphone-neighborhood':
-            string += '{Neighborhood distance: ' + str(param['Metaphone neighbors']) + '}\n'
-
-
-        string += str(approxAlgs[algorithm].evaluation) + '\n' + str(approxAlgs[algorithm].stats) + "\n\n"
-
-        cache.write(string)
-        print (string)
 
 
 if __name__=="__main__":
 
-    if CLEAR_CACHE:
-        cache = open('../out/cache.txt', 'w')
-        cache.close()
-    param = {'NGram distance': 2, 'NGram threshold': 0, 'Neighborhood distance': 1, 'Metaphone neighbors': 1, 'Metaphone nGrams': 2, 'Metaphone nG threshold': 0.9}
-    analyse(params=param)
 
+    param = {'NGram distance': 2, 'NGram threshold': 1, 'Neighborhood distance': 1, 'Metaphone neighbors': 1, 'Metaphone nGrams': 2, 'Metaphone nG threshold': 0.9}
+    analyse(params=param)
