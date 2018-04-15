@@ -1,0 +1,459 @@
+\documentclass[twocolumn]{article}
+
+\title{A Comparison and Analysis of Computational Spelling Correction Algorithms}
+\author{\textit{Anonymous}}
+\date{07-04-2018}
+
+% Packages
+\usepackage{amsmath}
+%\usepackage{a4wide}
+\usepackage[backend=bibtex,style=verbose-trad2]{biblatex}
+\usepackage{pgfplots}
+\usepackage{placeins}
+
+\addbibresource{bibliography.bib}
+
+
+% Document
+\begin{document}
+    \maketitle
+    \section{Introduction}
+    \paragraph{}
+    Spelling correction is a widely researched area of computer science, with the first spell check application dating
+    back to the 1971 application \textit{SPELL} written by Ralph Gorin, which implemented a highly speed-optimised
+    version of a neighborhood search algorithm\autocite[677]{HISTORY:1} .
+%    The current state of the art spell checkers such as \textit{Velocitap}\autocite{VELOCITAP} implement artificial
+%    neural network language models trained on billions of words.
+%    These modern approaches predict corrections much more accurately than conventional (non-AI based) approaches.
+%    furthermore, applications such as \textit{Velocitap} and other auto-correct applications function beyond simple
+%    spelling correction, aiming to increase typing speed on touchscreen devices.
+
+    This report investigates the performance of various approximate string matching algorithms for spelling correction,
+    and seeks to demonstrate their particular behavior, and its impact on their precision, recall, accuracy and
+    efficiency. \textit{n-Gram Similarity}, \textit{Neighborhood Search}, and \textit{Metaphone} were each used to
+    generate a list of possible correct spellings of a misspelled word from a dictionary.
+
+    By adjusting the length of grams and the similarity threshold when evaluating possible spellings using \textit{n-Gram},
+    or the number of modifications in a \textit{Neighborhood Search}, these algorithms were able to be tuned to improve
+    their performance.
+    Furthermore, by applying a combination of the \textit{Metaphone} and one of the aforementioned algorithms, using
+    certain parameter conditions it was possible to achieve better results on aggregate than using the any single
+    approach.
+        \subsection{Dataset}\label{subsec:dataset}
+        \paragraph{}
+    The data used in this report (\cite{DATASET}) contains 716 words that have been identified as misspelled, along
+    with their intended spellings, and a dictionary of 393954 words to be used by the spell check algorithms.
+    There are non-trivial deficiencies in the data set which are relevant when implementing and evaluating the
+    performance of these algorithms.
+
+    Firstly, only 82.9\% of the words in \textit{correct.txt} exist in the dictionary, this creates an upper bound for the recall of
+    any spell checker searching the dictionary for possible spellings.
+
+    Second, 1.25\% of the words in \textit{misspell.txt} words are identical to their correct spelling, this has a
+    lesser impact on the evaluation values, however will artificially increase both recall and precision if these words
+    are in the dictionary.
+
+    Finally, 24.4\% of the words in \textit{misspell.txt} exist in the dictionary as correct spellings, initially
+    when implementing the algorithms, a check was done to see if it was correct as is against a word in the dictionary
+    and if so, simply return the original (as it is not misspelled);
+    because of this irregularity in the data this effectively reduced recall 23.15\% across the board.
+    Removing this assumption mitigates the issue, however it will reduce the precision and accuracy of n-Gram Similarity
+    since the similarity of the misspelled word to a dictionary entry is 100\%.
+
+    \section{Approach}
+
+        \subsection{NGram Similarity}
+    n-Gram similarity was computed using open source code sourced from (\cite{NGRAM}) under LGPLv3+ licencing.
+    Possible spellings for a range of parameter configurations were found by, for each word in \textit{misspell.txt},
+    finding all words in the dictionary with a similarity threshold between 10\% and 100\% by increments of 10\%.
+    This process was then repeated for one, two and three grams.
+    The possible spellings generated for each parameter configuration was then compared with \textit{correct.txt} to
+    compute evaluation metrics for each configuration.
+
+        \subsection{Neighborhood Search}
+    For each word in \textit{misspell.txt}, neighbors were generated and searched for dictionary matches with a
+    neighborhood distance of one and two.
+
+        \subsection{Metaphone}
+    Metaphone is a phonetic string matching algorithm, which improves on Soundex by considering groups of letters
+    together in an effort to more accurately represent the true sound of the word\autocite{METAPHONE} .
+    The entire dictionary was converted to a phonetic dictionary, where a phonetic code is used as a hash-key for a
+    list of words sharing that code.
+    Metaphone encoding was done using code by (\cite{PHONO}) under an open source licence.
+    Computing possible spellings for each word in \textit{misspell.txt} was then achieved simply by using it's phonetic
+    code in the phonetic dictionary to retrieve the list of words with the same phonetic code.
+
+        \subsection{Post-Processed Metaphone}
+    Due to the size of the dictionary, metaphone alone generates a very large number of possible matches.
+    Although its recall was high, precision was very low.
+    To improve precision at minimal cost to recall, the process for parameter optimisation for n-Gram
+    similarity and neighborhood search above was used, however in this case rather than searching for matches in the
+    dictionary, they searched only for words that had been identified as phonetic matches.
+
+
+    %    \subsection{Neural Network}
+    %    \subsubsection{Architecture}
+    %    \subsubsection{Training}
+
+
+    \section{Results and Analysis}
+    % TODO graph of mean score  normalised runtime vs. params
+
+        \subsection{Evaluation Metrics}
+            \subsubsection{Recall}
+    As discussed in \ref{subsec:dataset}, 17.1\% of the correct spellings are not included in the dictionary, as such
+    before running any of the string matching algorithms, the precise percentage of correct spellings in the dictionary
+    was computed (as a decimal value).
+    Once established, this percentage (the maximum possible recall given the dictionary) was used to normalise recall.
+    That is:
+    $r^{normalised} = \frac{r^{actual}}{r^{max}}\\$
+
+
+            \subsubsection{Precision}
+    The percentage of correct spellings found amongst the total number of attempted possible spellings
+
+%            \subsubsection{Accuracy}
+%    Proportion of responses in which one and only one spelling correction is output, and that spelling is correct.
+
+
+            \subsubsection{Efficiency}
+    The average amount of time (in milliseconds) it takes an algorithm to compute possible spellings of a single word
+    (ms/word).
+
+            \subsubsection{F-score} \label{F}
+            $F_1 = \frac{2*recall*precision}{recall+precision}\\$
+
+    The F-score is a weighted average of precision and recall\autocite{FSCORE}.
+    This metric is more useful than either precision or recall independently, because the numerator is a product, if
+    either metric tends toward zero, even if the other is close to 100\%, the $F_1$ will be zero.
+    This is invaluable for evaluating the effectiveness of these algorithms in solving the real world problem of spell
+    check, since at the extremes, these algorithms offer very high recall, however may return a substantial portion of the
+    dictionary as possible spellings for a given word.
+    In that case, the program has provided essentially no information.
+
+
+
+% NGram
+
+        \pgfplotsset{width=7cm,compat=1.8,table/search path={../out/}}
+
+    \begin{figure}[h]
+        \begin{tikzpicture}
+	    \begin{axis}[legend pos=north west,
+        xlabel={Similarity threshold},
+            ylabel={$F_1$}]
+
+        \addplot[
+            scatter/classes={
+            1={mark=*,draw=black,fill=blue},
+            2={mark=*,draw=black,fill=red},
+            3={mark=*,draw=black,fill=green}
+            },
+            scatter,only marks,
+            scatter src=explicit symbolic]
+            table[x=th,y=F1,meta=N]
+            {ng.dat};
+            \legend{n = 1,n = 2,n = 3}
+
+            \end{axis}
+        \end{tikzpicture}
+        \caption{F-score vs similarity threshold for n-Grams of 1--3}
+        \label{fig:nGPlot}
+\end{figure}
+
+\begin{figure}[b]
+
+        \begin{center}
+        \begin{tabular}{|c|c|c|c|c|c|}
+
+            \hline
+            n & T & F & Recall & Precision & E\\
+             &  & (\%) &(\%)& (\%)&(ms/word)\\
+            \hline\hline
+            1 & 0.8 & 7.18 & 28.8 & 4.1 & 84.6\\
+            2 & 0.6 & 17.6 & 26.3 & 13.2 & 33.2\\
+            3 & 0.5 & 15.7 & 26.3 & 11.2 & 30.1\\
+
+            \hline
+        \end{tabular}
+        \end{center}
+        \caption{n-Gram similarity performance}
+        \label{fig:nGTable}
+    \end{figure}
+
+
+\subsection{n-Gram Similarity}
+    \paragraph{Similarity threshold and Gram size}
+
+
+    For gram sizes greater than one, the number of possible gram arrangements's decreases, so in order to achieve a reasonable
+    $F_1$ value, if follows that decreasing the threshold for gram similarity will need to be reduced.
+    In practice, this was shown to be exactly the case, at a n-Gram size of \textit(n=2) with a threshold of 1.0,
+    \textbf{theater} is the only word in the entire data-set that has a possible
+    suggested spelling other than the original string;
+    returning both \textbf{teather} and \textbf{theater} as possible spellings.
+
+    n-Gram is agnostic to order outside each gram, therefore for n=1, $F_1$ is at its maximum, because as the threshold
+    becomes smaller, the 1-Gram algorithm rapidly begins to match completely words that simply share at least the threshold
+    amount of letters.
+
+    These behaviors are illustrated in figure (\ref{fig:nGPlot}), as the threshold approaches 1, n=2 and n=3
+    converge to the same $F_1$ value, while n=1 improves to its maximum $F_1$ value.
+
+    The optimal threshold parameters for n = 1--3 are shown in figure (\ref{fig:nGTable})
+
+
+
+
+
+
+% Neighborhood Search
+
+
+    \begin{figure}[h]
+        \begin{tikzpicture}
+                \begin{axis}[colormap/hot,
+                ybar,
+                bar width=0.5cm,
+                width=220pt,
+                height=220pt,
+                %grid=major,
+                xmin=0.5,xmax=2.5,
+                ymin=0,ymax=1,
+                xtick={0,1,...,4},
+                ytick={0,0.1,...,1},
+                xlabel={$Neighborhood Distance$},
+                ylabel={$F_1$},
+                colormap/hot
+                ]
+
+
+
+                \addplot
+                    table {nei.dat};
+
+                \addplot
+                    coordinates {(1, 0.4915824915827796) (2, 0.861952861953367)};    %recall
+
+                \addplot
+                    coordinates {(1, 0.011563898459466952) (2, 0.0031632861105790914)}; %precision
+
+                \end{axis}
+            \end{tikzpicture}
+        \caption{Recall (red), precision (tan), and F-score for neighborhood search}
+        \label{NeiPlot}
+    \end{figure}
+
+
+    \begin{figure}
+
+        \begin{center}
+        \begin{tabular}{|c|c|c|c|c|c|}
+            \hline
+            N/n & T & Recall & Precision & F-score \\
+            &  & (\%) & (\%) & (\%)\\
+
+            \hline\hline
+            1 & NA & 49.16 & 1.16 & 2.26 \\
+            2 & NA & 86.20 & 0.32 & 0.63 \\
+            \hline\hline
+            3 & 0.1& 90.91 & 0.02 & 0.04 \\
+            2 & 0.5& 46.8  & 4.9  & 8.88 \\
+            \hline
+        \end{tabular}
+        \end{center}
+    \caption{Neighborhood search performance vs. high recall n-Gram search}
+    \label{NeiTable}
+\end{figure}
+
+        \subsection{Neighborhood Search}
+\paragraph{Neighborhood distance}
+    (N) defines the maximum number of insertions, deletions, and replacements to be made to generate a set of neighbors
+    through which to find possible spellings of a given word.
+    This generates an exponentially large number of neighbors as N increases, however assuming that the misspelled words
+    are within a close neighborhood of their correct spelling (which is often the case for the majority of simple
+    typographical or simple spelling errors) the benefit of increasing N diminishes as N gets larger.
+    This can be seen in (\ref{NeiTable}), where a recall of 86.2\% was achieved for N=2.
+
+    Of the highest recall values achieved, neighborhood search maintained the highest $F_1$ value when approaching the,
+    90\% area, however at lower recall values, n-Gram was more precise, see figure (\ref{NeiTable}).
+    This result comes about because in order of the n-Gram search to reach recalls in the region of 90\%+, the threshold
+    is set to 0.1.
+
+%    Precisions well under 1\% for both the neighborhood search for N=2 and the 3-Gram with a 0.1 threshold mean the utility
+%    of either of these algorithms as a stand alone system is dubious.
+%    One possible application for high recall low precision algorithms is
+
+
+\FloatBarrier
+
+% metaphone
+
+            \begin{figure}[h]
+                \begin{center}
+                    \begin{tabular}{|c|c|c|c|}
+                        \hline
+                        Recall & Precision & F-score & Efficency\\
+                        (\%) & (\%) & (\%) & (ms/word)\\
+                                        \hline\hline
+                        68.85 & 0.72 & 1.42 & 5-12\\
+                        \hline
+                    \end{tabular}
+                \end{center}
+                \caption{Metaphone performance}
+                \label{meta}
+            \end{figure}
+
+        \subsection{Metaphone}
+\paragraph{}
+    As expected, metaphone achieved a high recall, see figure (\ref{meta}), although not unlike the approaches previously
+    discussed, this comes at the cost of precision.
+    In this case, the reason for over-fitting for possible spellings is due to the phonetic rules being applied to each
+    word.
+    These rules have a one to many conversion back to plain text by design, the aim is to more accurately represent what
+    was intended by a word that has been misspelled, as opposed to the two much more 'shotgun' approaches discussed earlier.
+
+    Due to the intrinsically different nature of the sets of possible spelling outputs between the phonetic approach and
+    the previous algorithms, it will be possible to improve the quality of the predictions by applying post-processing on
+    the output of metaphone in an effort to refine the results.
+
+
+            % metaphone--ngram
+
+    \begin{figure}[h]
+        \begin{tikzpicture}
+	    \begin{axis}[legend pos=outer north east,
+            xlabel={Similarity threshold},
+            ylabel={$F_1$},
+            grid=major,
+        ]
+
+        \addplot[
+            scatter/classes={
+            1={mark=*,draw=black,fill=blue},
+            2={mark=*,draw=black,fill=red},
+            3={mark=*,draw=black,fill=green}
+            },
+            scatter,only marks,
+            scatter src=explicit symbolic]
+            table[x=th,y=F1,meta=N]
+            {ngm.dat};
+            \legend{n = 1,n = 2,n = 3}
+
+            \end{axis}
+        \end{tikzpicture}
+    \caption{F-score vs similarity threshold against metaphone results for n-Grams of 1--3}
+    \label{metaNG}
+\end{figure}
+
+        \subsection{Post-Processed Metaphone}
+
+
+\begin{figure}[h]
+    \begin{center}
+        \begin{tabular}{|c|c|c|c|c|c|}
+            \hline
+            n & Threshold &  F-score & Precision & E \\
+             &  & (\%) &  (\%)&(ms/word)\\
+
+                            \hline\hline
+            1 & 0.8  & 20.2 & 19.0 & 11.0\\
+            2 & 0.6  & 22.2 & 23.3 & 11.1\\
+            3 & 0.4  & 22.9 & 17.0 & 10.9\\
+
+            \hline
+        \end{tabular}
+    \end{center}
+    \caption{Metaphone-nGram performance}
+\end{figure}
+
+
+
+    \subsubsection{n-Gram Post-Processing}
+\paragraph{}
+    The same approach that was taken to optimise parameters for the standard n-Gram algorithm was repeated, using the
+    possible spellings from metaphone as the 'dictionary' in place of the dictionary provided.
+    The benefit of this approach is twofold;
+    firstly, because the n-Gram nad neighborhood search have now much smaller dictionary, performance is increased by orders
+    of magnitude.
+    Secondly, under optimal parameter conditions, the $F_1$ for the n-Gram processed metaphone approach raised to 22.9\%,
+    up from 17.6\% in the best case previously, a non-trivial improvement.
+
+
+
+% metaphone--neighborhood
+
+\begin{figure}[t]
+
+        \begin{tikzpicture}
+            \begin{axis}[colormap/hot,
+            ybar,
+            bar width=0.5cm,
+            width=220pt,
+            height=220pt,
+            xmin=0.5,xmax=2.5,
+            ymin=0,ymax=1,
+            xtick={0,1,...,4},
+            ytick={0,0.1,...,1},
+            xlabel={$Neighborhood Distance$},
+            ylabel={$F_1$},
+            colormap/hot
+            ]
+            \addplot+[]
+                table {nem.dat};
+            \addplot
+                coordinates {(1, 0.37710437710459804) (2, 0.6060606060609611)};    %recall
+
+            \addplot
+                coordinates {(1,0.11469534050179211) (2, 0.04039497307001795)}; %precision
+
+            \end{axis}
+        \end{tikzpicture}
+    \caption{F-score vs neighborhood distance used in post-processing metaphone}
+\end{figure}
+
+            \subsubsection{Neighborhood Post-Processing}
+\paragraph{}
+    Neighborhood post-processing was also attempted in the same manner as n-Gram.
+    Because neighborhood search is generally wider than n-gram (assuming reasonable parameter values for the
+    threshold), this post-processing approach, while still substantially better in terms of $F_1$ value and precision than
+    either neighborhood or precision on their own, it did not function as well overall as the tuned parameter n-Gram
+    post-processing method, simply because neighborhood search is too general and does not have the potential to account
+    for letter combinations.
+
+
+\begin{figure}[t]
+    \begin{center}
+
+        \begin{tabular}{|c|c|c|c|c|c|}
+            \hline
+            N & Recall & Precision & F-score & Efficency\\
+             & (\%) & (\%)&(\%) &(ms/word)\\
+
+                            \hline\hline
+            1 & 37.71 & 11.47 & 17.59 & 11.6\\
+            2 & 60.61 & 04.03 & 7.57 & 403\\
+            \hline
+        \end{tabular}
+    \caption{Neighborhood search post-processing performance}
+
+    \end{center}
+\end{figure}
+
+
+
+    \section{Conclusion}
+\paragraph{}
+    This report demonstrated the established the performance of several approximate string matching algorithms for
+    application in spelling correction.
+    The main evaluation metric used to investigate and optimise these algorithms was the F-score average, which was chosen
+    to help minimise loss in rudimentary evaluation values, recall and precision.
+    The algorithms analysed were n-Gram similarity (normalised n-Gram distance), neighborhood search, and metaphone.
+    Finally two improved spell checking methods were proposed in an attempt to further improve $F_1$ by combining
+    metaphone and non-phonetic algorithms with promising results.
+
+
+    \printbibliography
+
+
+\end{document}
